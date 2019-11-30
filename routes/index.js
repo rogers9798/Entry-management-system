@@ -3,7 +3,14 @@ var router = express.Router();
 var User = require('../models/user');
 var Visitor=require('../models/visitor');
 var bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer')
+const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+dotenv.config();
+var alert=require('alert-node')
+
+const accountSid = process.env.accountSid;
+const authToken = process.env.authToken;
+const client = require('twilio')(accountSid, authToken);
 
 router.get('/', function (req, res, next) {
 	return res.render('index.ejs');
@@ -17,7 +24,7 @@ router.post('/', function(req, res, next) {
 	var personInfo = req.body;
 
 
-	if(!personInfo.email || !personInfo.username || !personInfo.password || !personInfo.passwordConf){
+	if(!personInfo.email || !personInfo.username || !personInfo.password || !personInfo.passwordConf || !personInfo.phone){
 		res.send();
 	} else {
 		if (personInfo.password == personInfo.passwordConf) {
@@ -43,6 +50,7 @@ router.post('/', function(req, res, next) {
 									unique_id:c,
 									email:personInfo.email,
 									username: personInfo.username,
+									phone:personInfo.phone,
 									password: personInfo.password,
 									passwordConf: personInfo.passwordConf
 								});
@@ -244,7 +252,8 @@ router.post('/visitors', async (req, res)=>{
 		const lastCheckIn = visitor.entry[visitor.entry.length - 1]
 		const lastCheckInTimestamp = lastCheckIn.checkin.getTime()
 		if (Date.now() > lastCheckInTimestamp + 100) {
-			console.log('error', `${visitor.Name} has checked in for today already`)
+			
+		  alert('Error :\n'+`${visitor.Name} has checked in for today already`)
 		  res.redirect('/profile')
 		}
 	  } 
@@ -252,8 +261,9 @@ router.post('/visitors', async (req, res)=>{
 	  else {
 		visitor.entry.push(data)
 		await visitor.save()
-		console.log('success', `${visitor.Name} checked in for today successfully, email & sms sent to host`)
+		alert('success:\n'+ `${visitor.Name} checked in for today successfully, email & sms sent to host`)
   
+		var hostName=visitor.host
 		var hostEmail = req.body.email;
 		console.log(hostEmail);
 		var visitorName = visitor.Name
@@ -264,11 +274,12 @@ router.post('/visitors', async (req, res)=>{
 		var dateIST = new Date(visitorCheckin)
 		dateIST.setHours(dateIST.getHours() + 5)
 		dateIST.setMinutes(dateIST.getMinutes() + 30)
-		var message = 'New Checkin:\n' + 'Name: ' + visitorName + '\nEmail: ' + visitorEmail + '\nPhone: ' + visitorPhone + '\nCheckin: ' + dateIST.toGMTString()
+		var message = 'New Checkin:\n' + 'Name: ' + visitorName + '\nEmail: ' + visitorEmail + '\nPhone: ' + visitorPhone + '\nCheckin: ' + dateIST.toGMTString()+ '\nhost:'+hostName
   
+		const list=[hostEmail,visitorEmail]
 		var mailOptions = {
 		  from: process.env.EMAIL,
-		  to: hostEmail,
+		  to: list,
 		  subject: 'Mail sent using Entry Management Application',
 		  text: message
 		}
@@ -281,7 +292,81 @@ router.post('/visitors', async (req, res)=>{
 		  }
 		})
   
+		client.messages
+		.create({
+		body: message,
+		from: process.env.NumFrom,
+		to: process.env.NumTo
+		})
+		.then(message => console.log(message.sid));
   
+		res.redirect('/profile')
+	  }
+	} catch (err) {
+	 alert('something went wrong'+ err)
+	}
+  })
+
+  router.post('/visitor/:id/checkout', async (req, res) => {
+	try {
+	  const visitor = await Visitor.findOne({ _id: req.params.id })
+	  if (visitor.entry && visitor.entry.length > 0) {
+		const lastEntry = visitor.entry[visitor.entry.length - 1]
+		if (lastEntry.checkout.time) {
+			alert('error:\n'+ `${visitor.Name} already checked out`)
+		  res.redirect('/profile')
+		  return
+		}
+
+		lastEntry.checkout.time = Date.now()
+		await visitor.save()
+		alert('success:\n'+ `${visitor.Name} successfully checked out, email sent to visitor`)
+  
+		// Name
+		var visitorName = visitor.Name
+		// Phone
+		var visitorPhone = visitor.phone
+		// Email
+		var visitorEmail = visitor.email
+		// Check-in time
+		var lastCheck = visitor.entry[visitor.entry.length - 1]
+		var visitorCheckin = lastCheck.checkin.getTime()
+		var dateIST = new Date(visitorCheckin)
+		dateIST.setHours(dateIST.getHours() + 5)
+		dateIST.setMinutes(dateIST.getMinutes() + 30)
+		var dateISTCheckin = dateIST.toGMTString()
+		// Check-out time
+		var visitorCheckout = lastCheck.checkout.time.getTime()
+		var dateISTCheckout = new Date(visitorCheckout)
+		dateISTCheckout.setHours(dateISTCheckout.getHours() + 5)
+		dateISTCheckout.setMinutes(dateISTCheckout.getMinutes() + 30)
+  
+		// Host name
+		var hostName = req.body.host
+		// Host email
+		var hostEmail = req.body.email
+		
+  const list =[hostEmail,visitorEmail]
+		var message = 'You have successfully checked out: \n\n' + 'Name: ' + visitorName + '\nPhone: ' + visitorPhone + '\nCheckin: ' + dateISTCheckin + '\nCheckout: ' + dateISTCheckout.toGMTString() + '\nHost Name: ' + hostName + '\nHost Email: ' + hostEmail + '\n'
+  
+		var mailOptions = {
+		  from: process.env.EMAIL,
+		  to: list,
+		  subject: 'Mail sent using Jotting Entry Management Application',
+		  text: message
+		}
+  
+		transporter.sendMail(mailOptions, (err, info) => {
+		  if (err) {
+			console.log(err)
+		  } else {
+			console.log('email sent: ' + info.response)
+		  }
+		})
+  
+		res.redirect('/profile')
+	  } else {
+		alert('error:\n'+ `${visitor.name} does not have any check in entry`)
 		res.redirect('/profile')
 	  }
 	} catch (err) {
