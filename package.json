@@ -4,7 +4,7 @@
   "description": "This is a user login and registration app using Node.js, Express, Mongoose and express-sessions.",
   "main": "server.js",
   "dependencies": {
-    "bcrypt": "^3.0.7",
+    "bcrypt": "^5.0.0",
     "connect-mongo": "^3.0.0",
     "ejs": "^2.6.2",
     "express": "^4.17.1",
