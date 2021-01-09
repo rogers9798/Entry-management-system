@@ -1,11 +1,11 @@
-# Jotting-entry-management-system
+# Entry-management-system
 
-[![Website shields.io](https://img.shields.io/badge/nodeJS-server-green.svg)](https://github.com/rogers9798/Jotting-entry-management-system) 
+[![Website shields.io](https://img.shields.io/badge/nodeJS-server-green.svg)](https://github.com/rogers9798/Entry-management-system) 
 
 
 ## About
 
-Jotting is an entry management system made using Nodejs and its frameworks.
+An Entry management system made using Nodejs and its frameworks.
 This system has multiple functionalities as stated below :
 
 * Host Register
@@ -31,7 +31,3 @@ This system has multiple functionalities as stated below :
 * Make sure you configured `server.js` file according to your mongodb database and `routes/index.js` according to the environment variables.<br>
 
 ### <pre>Note : Add the keys, emails, passwords, SECRET(used for sessions), phone numbers in an .env file in root directory of the project</pre>
-
-
-[![img shields.io](https://img.shields.io/badge/JARVIS-rogers9798-orange.svg)](https://github.com/rogers9798/Tweet-spotter)
-
